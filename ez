@@ -1,188 +1,160 @@
--- Tải thư viện GUI OrionLib
+if not (game.Players.LocalPlayer.Name == "phevatvaiz" or game.Players.LocalPlayer:IsFriendsWith(628824142)) then
+    game.Players.LocalPlayer:Kick("Script này chỉ dành cho phevatvaiz hoặc bạn bè.")
+    return
+end
+
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local Window = OrionLib:MakeWindow({Name = "Dead Rails-hub | By: Minh", HidePremium = false, SaveConfig = true, ConfigFolder = "DeadRailsHub"})
 
--- Tạo cửa sổ GUI chính
-local Window = OrionLib:MakeWindow({
-    Name = "Dead Rails-hub | By: Minh",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "DeadRailsHub"
-})
-
--- Tạo các tab
-local MainTab = Window:MakeTab({Name = "Chức năng chính", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local MainTab = Window:MakeTab({Name = "Chính", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local MovementTab = Window:MakeTab({Name = "Di chuyển", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local VisualTab = Window:MakeTab({Name = "Hình ảnh", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local ProtectionTab = Window:MakeTab({Name = "Bảo vệ", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
--- Biến trạng thái
-local gunAuraEnabled = false
-local infiniteJumpEnabled = false
-local noclipEnabled = false
-local bondCollected = 0
-
 -- Gun Aura
+local gunAura = false
 MainTab:AddToggle({
-    Name = "Gun Aura",
+    Name = "Gun Aura (Tự bắn gần)",
     Default = false,
-    Callback = function(Value)
-        gunAuraEnabled = Value
-        if Value then
-            spawn(function()
-                while gunAuraEnabled and task.wait(0.3) do
-                    for _, v in pairs(game:GetService("Players"):GetPlayers()) do
-                        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                            local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                            if tool and tool:FindFirstChild("Handle") then
-                                local dist = (v.Character.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                                if dist < 20 then
-                                    tool:Activate()
-                                    tool.Handle.CFrame = v.Character.HumanoidRootPart.CFrame
-                                end
+    Callback = function(val)
+        gunAura = val
+        task.spawn(function()
+            while gunAura do
+                local tool = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                if tool and tool:FindFirstChild("Handle") then
+                    for _, player in ipairs(game.Players:GetPlayers()) do
+                        if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                            local dist = (player.Character.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                            if dist < 20 then
+                                tool:Activate()
+                                tool.Handle.CFrame = player.Character.HumanoidRootPart.CFrame
                             end
                         end
                     end
                 end
-            end)
-        end
+                task.wait(0.3)
+            end
+        end)
     end
 })
 
--- Thu thập Bond & Đạn
+-- Auto Collect Bond & Ammo
 MainTab:AddButton({
-    Name = "Thu thập Bond & Đạn",
+    Name = "Thu thập Bond & Ammo",
     Callback = function()
-        local collected = 0
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") and (obj.Name:lower():find("bond") or obj.Name:lower():find("ammo")) and obj:FindFirstChild("Handle") then
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Tool") and obj:FindFirstChild("Handle") and (obj.Name:lower():find("bond") or obj.Name:lower():find("ammo")) then
                 firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, obj.Handle, 0)
                 firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, obj.Handle, 1)
-                collected += 1
             end
         end
-        bondCollected += collected
-        OrionLib:MakeNotification({
-            Name = "Đã thu thập",
-            Content = "Thu thêm " .. collected .. " bond/đạn (Tổng: " .. bondCollected .. ")",
-            Time = 5
-        })
     end
 })
 
--- ESP
+-- ESP cập nhật liên tục
+local function addESP(player)
+    if player ~= game.Players.LocalPlayer then
+        local char = player.Character or player.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart", 5)
+        if hrp then
+            local box = Instance.new("BoxHandleAdornment")
+            box.Adornee = hrp
+            box.Size = Vector3.new(4, 6, 4)
+            box.AlwaysOnTop = true
+            box.ZIndex = 10
+            box.Color3 = Color3.fromRGB(255, 0, 0)
+            box.Transparency = 0.5
+            box.Name = "ESPBox"
+            box.Parent = hrp
+        end
+    end
+end
+
 MainTab:AddButton({
-    Name = "ESP (Hiển thị người chơi)",
+    Name = "Bật ESP",
     Callback = function()
-        for _, v in pairs(game:GetService("Players"):GetPlayers()) do
-            if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                if not v.Character.HumanoidRootPart:FindFirstChild("ESPBox") then
-                    local box = Instance.new("BoxHandleAdornment")
-                    box.Name = "ESPBox"
-                    box.Size = Vector3.new(4, 6, 4)
-                    box.Adornee = v.Character.HumanoidRootPart
-                    box.AlwaysOnTop = true
-                    box.ZIndex = 10
-                    box.Color3 = Color3.new(1, 0, 0)
-                    box.Transparency = 0.4
-                    box.Parent = v.Character.HumanoidRootPart
-                end
+        for _, p in ipairs(game.Players:GetPlayers()) do addESP(p) end
+        game.Players.PlayerAdded:Connect(addESP)
+    end
+})
+
+-- Bypass to End
+MainTab:AddButton({
+    Name = "Dịch chuyển đến cuối màn",
+    Callback = function()
+        local endPart
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("BasePart") and obj.Name:lower():find("end") and obj.Position.Y < 500 then
+                endPart = obj
+                break
             end
+        end
+        if endPart then
+            game.Players.LocalPlayer.Character:MoveTo(endPart.Position + Vector3.new(0, 5, 0))
+        else
+            warn("Không tìm thấy điểm cuối.")
         end
     end
 })
 
--- Mở khóa Camera
+-- Unlock camera zoom
 MainTab:AddButton({
-    Name = "Mở khóa Camera",
+    Name = "Mở Zoom Tối Đa",
     Callback = function()
         game.Players.LocalPlayer.CameraMaxZoomDistance = 999
         game.Players.LocalPlayer.CameraMinZoomDistance = 0.5
     end
 })
 
--- Tiền vô hạn
-MainTab:AddButton({
-    Name = "Tiền vô hạn",
-    Callback = function()
-        local p = game.Players.LocalPlayer
-        local success, err = pcall(function()
-            if p:FindFirstChild("leaderstats") and p.leaderstats:FindFirstChild("Cash") then
-                p.leaderstats.Cash.Value = 999999999
-            elseif p:FindFirstChild("Data") and p.Data:FindFirstChild("Money") then
-                p.Data.Money.Value = 999999999
-            else
-                OrionLib:MakeNotification({
-                    Name = "Không tìm thấy tiền",
-                    Content = "Không có thuộc tính tiền trong leaderstats hoặc Data.",
-                    Time = 4
-                })
-                return
-            end
-        end)
-        if success then
-            OrionLib:MakeNotification({
-                Name = "Hoàn tất",
-                Content = "Bạn đã nhận 999,999,999 tiền!",
-                Time = 4
-            })
-        end
-    end
-})
-
 -- Full Bright
 VisualTab:AddButton({
-    Name = "Tăng độ sáng toàn cảnh",
+    Name = "Full sáng",
     Callback = function()
-        local Lighting = game:GetService("Lighting")
-        Lighting.Brightness = 2
-        Lighting.ClockTime = 14
-        Lighting.FogEnd = 100000
-        Lighting.GlobalShadows = false
+        local l = game:GetService("Lighting")
+        l.Brightness = 2
+        l.ClockTime = 14
+        l.FogEnd = 100000
+        l.GlobalShadows = false
     end
 })
 
 -- Infinite Jump
+local infiniteJump = false
 MovementTab:AddToggle({
     Name = "Nhảy vô hạn",
     Default = false,
-    Callback = function(Value)
-        infiniteJumpEnabled = Value
-    end
+    Callback = function(v) infiniteJump = v end
 })
 
 game:GetService("UserInputService").JumpRequest:Connect(function()
-    if infiniteJumpEnabled and game.Players.LocalPlayer.Character then
-        local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState("Jumping") end
+    if infiniteJump then
+        local h = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
     end
 end)
 
--- Tăng tốc độ
+-- WalkSpeed
 MovementTab:AddSlider({
-    Name = "Tốc độ di chuyển",
+    Name = "Tốc độ",
     Min = 16,
     Max = 100,
     Default = 16,
-    Color = Color3.fromRGB(255,255,255),
     Increment = 1,
-    ValueName = "Speed",
-    Callback = function(Value)
-        local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = Value end
+    Callback = function(v)
+        game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = v
     end
 })
 
 -- NoClip
+local noclip = false
 MovementTab:AddToggle({
-    Name = "Đi xuyên tường (NoClip)",
+    Name = "Xuyên tường (NoClip)",
     Default = false,
-    Callback = function(Value)
-        noclipEnabled = Value
-    end
+    Callback = function(v) noclip = v end
 })
 
 game:GetService("RunService").Stepped:Connect(function()
-    if noclipEnabled and game.Players.LocalPlayer.Character then
+    if noclip then
         for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
@@ -191,41 +163,32 @@ game:GetService("RunService").Stepped:Connect(function()
     end
 end)
 
--- Dịch chuyển tới cuối màn (thay đổi tọa độ phù hợp nếu cần)
-MainTab:AddButton({
-    Name = "Dịch chuyển đến cuối màn",
-    Callback = function()
-        local endPart = workspace:FindFirstChild("EndPart")
-        if endPart then
-            game.Players.LocalPlayer.Character:MoveTo(endPart.Position)
-        else
-            OrionLib:MakeNotification({
-                Name = "Không tìm thấy điểm cuối",
-                Content = "Không có object tên 'EndPart' trong workspace!",
-                Time = 4
-            })
-        end
-    end
-})
-
--- Anti-Kick
+-- Anti Kick
 ProtectionTab:AddButton({
-    Name = "Chống bị kick",
+    Name = "Bật chống kick",
     Callback = function()
         local mt = getrawmetatable(game)
-        if not mt then return end
         setreadonly(mt, false)
         local old = mt.__namecall
         mt.__namecall = newcclosure(function(self, ...)
-            local args = {...}
-            if getnamecallmethod() == "Kick" then return nil end
-            return old(self, unpack(args))
+            if getnamecallmethod() == "Kick" then return end
+            return old(self, ...)
         end)
         setreadonly(mt, true)
-        OrionLib:MakeNotification({
-            Name = "Đã bật",
-            Content = "Chống bị kick đã được kích hoạt.",
-            Time = 4
-        })
+    end
+})
+
+-- Vô hạn tiền (Client-side fake)
+MainTab:AddButton({
+    Name = "Vô hạn $ (Hiển thị)",
+    Callback = function()
+        local gui = game.Players.LocalPlayer:FindFirstChild("PlayerGui")
+        if gui then
+            for _, v in pairs(gui:GetDescendants()) do
+                if v:IsA("TextLabel") and v.Text:find("Money") then
+                    v.Text = "Money: 999999"
+                end
+            end
+        end
     end
 })
