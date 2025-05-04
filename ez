@@ -1,114 +1,213 @@
 if not (game.Players.LocalPlayer.Name == "phevatvaiz" or game.Players.LocalPlayer:IsFriendsWith(628824142)) then
-    game.Players.LocalPlayer:Kick("Script này chỉ dành cho phevatvaiz hoặc bạn bè.")
+    game.Players.LocalPlayer:Kick("Script này chỉ dành cho chủ script hoặc bạn bè.")
     return
 end
 
+l-- Tải thư viện GUI
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
-local Window = OrionLib:MakeWindow({Name = "Dead Rails-hub | By: Minh", HidePremium = false, SaveConfig = true, ConfigFolder = "DeadRailsHub"})
 
-local MainTab = Window:MakeTab({Name = "Chính", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+-- Tạo cửa sổ GUI
+local Window = OrionLib:MakeWindow({
+    Name = "Dead Rails-Hub | By: Minh",
+    HidePremium = false,
+    SaveConfig = true,
+    ConfigFolder = "DeadRailsHubMinh"
+})
+
+-- Tabs
+local MainTab = Window:MakeTab({Name = "Chức năng chính", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local MovementTab = Window:MakeTab({Name = "Di chuyển", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local VisualTab = Window:MakeTab({Name = "Hình ảnh", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local ProtectionTab = Window:MakeTab({Name = "Bảo vệ", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
+-- Biến trạng thái
+local gunAuraEnabled = false
+local infiniteJumpEnabled = false
+local noclipEnabled = false
+
 -- Gun Aura
-local gunAura = false
 MainTab:AddToggle({
-    Name = "Gun Aura (Tự bắn gần)",
+    Name = "Gun Aura",
     Default = false,
-    Callback = function(val)
-        gunAura = val
-        task.spawn(function()
-            while gunAura do
-                local tool = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                if tool and tool:FindFirstChild("Handle") then
-                    for _, player in ipairs(game.Players:GetPlayers()) do
-                        if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                            local dist = (player.Character.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                            if dist < 20 then
+    Callback = function(Value)
+        gunAuraEnabled = Value
+        if Value then
+            task.spawn(function()
+                while gunAuraEnabled do
+                    for _, v in pairs(game:GetService("Players"):GetPlayers()) do
+                        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                            local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                            if tool and tool:FindFirstChild("Handle") then
                                 tool:Activate()
-                                tool.Handle.CFrame = player.Character.HumanoidRootPart.CFrame
+                                tool.Handle.CFrame = v.Character.HumanoidRootPart.CFrame
                             end
                         end
                     end
+                    task.wait(0.3)
                 end
-                task.wait(0.3)
-            end
-        end)
+            end)
+        end
     end
 })
 
 -- Auto Collect Bond & Ammo
 MainTab:AddButton({
-    Name = "Thu thập Bond & Ammo",
+    Name = "Thu thập Bond & Đạn (gần bạn)",
     Callback = function()
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") and obj:FindFirstChild("Handle") and (obj.Name:lower():find("bond") or obj.Name:lower():find("ammo")) then
-                firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, obj.Handle, 0)
-                firetouchinterest(game.Players.LocalPlayer.Character.HumanoidRootPart, obj.Handle, 1)
-            end
-        end
-    end
-})
-
--- ESP cập nhật liên tục
-local function addESP(player)
-    if player ~= game.Players.LocalPlayer then
+        local player = game.Players.LocalPlayer
         local char = player.Character or player.CharacterAdded:Wait()
-        local hrp = char:WaitForChild("HumanoidRootPart", 5)
-        if hrp then
-            local box = Instance.new("BoxHandleAdornment")
-            box.Adornee = hrp
-            box.Size = Vector3.new(4, 6, 4)
-            box.AlwaysOnTop = true
-            box.ZIndex = 10
-            box.Color3 = Color3.fromRGB(255, 0, 0)
-            box.Transparency = 0.5
-            box.Name = "ESPBox"
-            box.Parent = hrp
-        end
-    end
-end
+        local hrp = char:WaitForChild("HumanoidRootPart")
 
-MainTab:AddButton({
-    Name = "Bật ESP",
-    Callback = function()
-        for _, p in ipairs(game.Players:GetPlayers()) do addESP(p) end
-        game.Players.PlayerAdded:Connect(addESP)
-    end
-})
-
--- Bypass to End
-MainTab:AddButton({
-    Name = "Dịch chuyển đến cuối màn",
-    Callback = function()
-        local endPart
-        for _, obj in ipairs(workspace:GetDescendants()) do
-            if obj:IsA("BasePart") and obj.Name:lower():find("end") and obj.Position.Y < 500 then
-                endPart = obj
-                break
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Tool") and (obj.Name:lower():find("bond") or obj.Name:lower():find("ammo")) and obj:FindFirstChild("Handle") then
+                firetouchinterest(hrp, obj.Handle, 0)
+                task.wait()
+                firetouchinterest(hrp, obj.Handle, 1)
             end
         end
-        if endPart then
-            game.Players.LocalPlayer.Character:MoveTo(endPart.Position + Vector3.new(0, 5, 0))
+    end
+})
+
+-- Thu thập tất cả Bond
+MainTab:AddButton({
+    Name = "Thu thập tất cả Bond",
+    Callback = function()
+        local player = game.Players.LocalPlayer
+        local char = player.Character or player.CharacterAdded:Wait()
+        local hrp = char:WaitForChild("HumanoidRootPart")
+
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Tool") and obj.Name:lower():find("bond") and obj:FindFirstChild("Handle") then
+                firetouchinterest(hrp, obj.Handle, 0)
+                task.wait()
+                firetouchinterest(hrp, obj.Handle, 1)
+            end
+        end
+
+        OrionLib:MakeNotification({
+            Name = "Đã thu thập Bond",
+            Content = "Tất cả Bond trong map đã được thu thập!",
+            Image = "rbxassetid://4483345998",
+            Time = 4
+        })
+    end
+})
+
+-- ESP
+MainTab:AddToggle({
+    Name = "ESP (Hiển thị người chơi)",
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            task.spawn(function()
+                while Value do
+                    for _, v in pairs(game:GetService("Players"):GetPlayers()) do
+                        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and not v.Character.HumanoidRootPart:FindFirstChild("ESPBox") then
+                            local box = Instance.new("BoxHandleAdornment")
+                            box.Name = "ESPBox"
+                            box.Size = Vector3.new(4, 6, 4)
+                            box.Adornee = v.Character.HumanoidRootPart
+                            box.AlwaysOnTop = true
+                            box.ZIndex = 10
+                            box.Color3 = Color3.new(1, 0, 0)
+                            box.Transparency = 0.4
+                            box.Parent = v.Character.HumanoidRootPart
+                        end
+                    end
+                    task.wait(1)
+                end
+            end)
         else
-            warn("Không tìm thấy điểm cuối.")
+            for _, v in pairs(game:GetService("Players"):GetPlayers()) do
+                if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    for _, adorn in pairs(v.Character.HumanoidRootPart:GetChildren()) do
+                        if adorn:IsA("BoxHandleAdornment") and adorn.Name == "ESPBox" then
+                            adorn:Destroy()
+                        end
+                    end
+                end
+            end
         end
     end
 })
 
--- Unlock camera zoom
+-- Mở khóa Camera
 MainTab:AddButton({
-    Name = "Mở Zoom Tối Đa",
+    Name = "Mở khóa Camera",
     Callback = function()
-        game.Players.LocalPlayer.CameraMaxZoomDistance = 999
-        game.Players.LocalPlayer.CameraMinZoomDistance = 0.5
+        local p = game.Players.LocalPlayer
+        p.CameraMaxZoomDistance = 999
+        p.CameraMinZoomDistance = 0.5
+    end
+})
+
+-- Tạo bản sao tấn công kẻ gây sát thương
+MainTab:AddButton({
+    Name = "Tạo bản sao tấn công",
+    Callback = function()
+        local Players = game:GetService("Players")
+        local LocalPlayer = Players.LocalPlayer
+        local Char = LocalPlayer.Character
+        if not Char then return end
+
+        local Clone = Char:Clone()
+        Clone.Name = LocalPlayer.Name .. "'s bản sao"
+        Clone.Parent = workspace
+
+        for _, v in pairs(Clone:GetDescendants()) do
+            if v:IsA("Script") or v:IsA("LocalScript") then
+                v:Destroy()
+            end
+        end
+
+        local Humanoid = Clone:FindFirstChildOfClass("Humanoid")
+        if Humanoid then
+            Humanoid.Health = 100
+            Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                Humanoid.Health = 100
+            end)
+        end
+
+        local attackers = {}
+        local originalHumanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+
+        if originalHumanoid then
+            originalHumanoid:GetPropertyChangedSignal("Health"):Connect(function()
+                local currentHealth = originalHumanoid.Health
+                if currentHealth < originalHumanoid.MaxHealth then
+                    for _, plr in pairs(Players:GetPlayers()) do
+                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+                            local dist = (plr.Character.HumanoidRootPart.Position - Char.HumanoidRootPart.Position).Magnitude
+                            if dist <= 30 and not table.find(attackers, plr) then
+                                table.insert(attackers, plr)
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+
+        task.spawn(function()
+            while Clone and Clone:FindFirstChild("HumanoidRootPart") do
+                for _, attacker in pairs(attackers) do
+                    if attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart") then
+                        Clone:MoveTo(attacker.Character.HumanoidRootPart.Position + Vector3.new(0, 0, 2))
+                        wait(0.1)
+                        local tool = Clone:FindFirstChildOfClass("Tool")
+                        if tool then
+                            tool:Activate()
+                        end
+                    end
+                end
+                wait(1)
+            end
+        end)
     end
 })
 
 -- Full Bright
 VisualTab:AddButton({
-    Name = "Full sáng",
+    Name = "Tăng độ sáng toàn cảnh",
     Callback = function()
         local l = game:GetService("Lighting")
         l.Brightness = 2
@@ -119,42 +218,43 @@ VisualTab:AddButton({
 })
 
 -- Infinite Jump
-local infiniteJump = false
 MovementTab:AddToggle({
     Name = "Nhảy vô hạn",
     Default = false,
-    Callback = function(v) infiniteJump = v end
+    Callback = function(Value)
+        infiniteJumpEnabled = Value
+    end
 })
-
 game:GetService("UserInputService").JumpRequest:Connect(function()
-    if infiniteJump then
-        local h = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+    if infiniteJumpEnabled then
+        game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
     end
 end)
 
--- WalkSpeed
+-- Walk Speed
 MovementTab:AddSlider({
-    Name = "Tốc độ",
+    Name = "Tốc độ di chuyển",
     Min = 16,
     Max = 100,
     Default = 16,
     Increment = 1,
-    Callback = function(v)
-        game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = v
+    ValueName = "Speed",
+    Callback = function(Value)
+        local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = Value end
     end
 })
 
 -- NoClip
-local noclip = false
 MovementTab:AddToggle({
-    Name = "Xuyên tường (NoClip)",
+    Name = "Đi xuyên tường (NoClip)",
     Default = false,
-    Callback = function(v) noclip = v end
+    Callback = function(Value)
+        noclipEnabled = Value
+    end
 })
-
 game:GetService("RunService").Stepped:Connect(function()
-    if noclip then
+    if noclipEnabled then
         for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
@@ -163,32 +263,29 @@ game:GetService("RunService").Stepped:Connect(function()
     end
 end)
 
--- Anti Kick
+-- Bypass to End
+MainTab:AddButton({
+    Name = "Dịch chuyển đến cuối màn",
+    Callback = function()
+        local endPosition = Vector3.new(0, 50, 1000) -- ← cập nhật theo map thật
+        game.Players.LocalPlayer.Character:MoveTo(endPosition)
+    end
+})
+
+-- Anti-Kick
 ProtectionTab:AddButton({
-    Name = "Bật chống kick",
+    Name = "Chống bị kick",
     Callback = function()
         local mt = getrawmetatable(game)
         setreadonly(mt, false)
         local old = mt.__namecall
         mt.__namecall = newcclosure(function(self, ...)
-            if getnamecallmethod() == "Kick" then return end
-            return old(self, ...)
+            local args = {...}
+            if getnamecallmethod() == "Kick" or tostring(self) == "Kick" then
+                return warn("Đã chặn lệnh kick.")
+            end
+            return old(self, unpack(args))
         end)
         setreadonly(mt, true)
-    end
-})
-
--- Vô hạn tiền (Client-side fake)
-MainTab:AddButton({
-    Name = "Vô hạn $ (Hiển thị)",
-    Callback = function()
-        local gui = game.Players.LocalPlayer:FindFirstChild("PlayerGui")
-        if gui then
-            for _, v in pairs(gui:GetDescendants()) do
-                if v:IsA("TextLabel") and v.Text:find("Money") then
-                    v.Text = "Money: 999999"
-                end
-            end
-        end
     end
 })
