@@ -1,7 +1,26 @@
-if not (game.Players.LocalPlayer.Name == "phevatvaiz" or game.Players.LocalPlayer:IsFriendsWith(628824142)) then
-    game.Players.LocalPlayer:Kick("Script này chỉ dành cho chủ script hoặc bạn bè.")
+-- Danh sách chủ sở hữu được phép chia sẻ script
+local allowedUserIds = {
+    5231420503, -- chính bạn
+    8348136049,
+    3019899298,
+    1845194807
+}
+
+local localPlayer = game.Players.LocalPlayer
+local allowed = false
+
+for _, ownerId in ipairs(allowedUserIds) do
+    if localPlayer.UserId == ownerId or localPlayer:IsFriendsWith(ownerId) then
+        allowed = true
+        break
+    end
+end
+
+if not allowed then
+    localPlayer:Kick("Thông báo🔥:Script này chỉ dành cho chủ sở hữu hoặc bạn bè đã được chỉ định.")
     return
 end
+
 
 l-- Tải thư viện GUI
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
@@ -29,7 +48,7 @@ local winPositions = {
 
 -- Auto Win (di chuyển qua các tọa độ cuối map)
 MainTab:AddToggle({
-    Name = "Auto Win (dịch chuyển đến cuối màn)",
+    Name = "Auto Win (Testing)",
     Default = false,
     Callback = function(Value)
         _G.AutoWin = Value
@@ -43,7 +62,7 @@ MainTab:AddToggle({
                 -- Thông báo khi hoàn tất 1 vòng
                 OrionLib:MakeNotification({
                     Name = "Auto Win",
-                    Content = "Đã hoàn tất 1 lượt dịch chuyển đến cuối màn!",
+                    Content = "Đã hoàn tất dịch chuyển đến cuối màn!",
                     Image = "rbxassetid://4483345998",
                     Time = 3
                 })
@@ -87,7 +106,7 @@ MainTab:AddToggle({
 
 -- Auto Collect Bond & Ammo
 MainTab:AddButton({
-    Name = "Thu thập Bond & Đạn (gần bạn)",
+    Name = "Thu thập Bond & Đạn",
     Callback = function()
         local player = game.Players.LocalPlayer
         local char = player.Character or player.CharacterAdded:Wait()
