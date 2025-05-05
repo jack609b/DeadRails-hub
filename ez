@@ -20,6 +20,41 @@ local MovementTab = Window:MakeTab({Name = "Di chuyển", Icon = "rbxassetid://4
 local VisualTab = Window:MakeTab({Name = "Hình ảnh", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 local ProtectionTab = Window:MakeTab({Name = "Bảo vệ", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
+-- Danh sách tọa độ cuối map (cập nhật tùy bản đồ)
+local winPositions = {
+    Vector3.new(0, 50, 1000),
+    Vector3.new(0, 50, 1100),
+    Vector3.new(0, 50, 1200),
+}
+
+-- Auto Win (di chuyển qua các tọa độ cuối map)
+MainTab:AddToggle({
+    Name = "Auto Win (dịch chuyển đến cuối màn)",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoWin = Value
+        task.spawn(function()
+            while _G.AutoWin do
+                for _, pos in ipairs(winPositions) do
+                    if not _G.AutoWin then break end
+                    game.Players.LocalPlayer.Character:MoveTo(pos)
+                    task.wait(1.5)
+                end
+                -- Thông báo khi hoàn tất 1 vòng
+                OrionLib:MakeNotification({
+                    Name = "Auto Win",
+                    Content = "Đã hoàn tất 1 lượt dịch chuyển đến cuối màn!",
+                    Image = "rbxassetid://4483345998",
+                    Time = 3
+                })
+                task.wait(1)
+            end
+        end)
+    end
+})
+
+
+
 -- Biến trạng thái
 local gunAuraEnabled = false
 local infiniteJumpEnabled = false
@@ -200,6 +235,41 @@ MainTab:AddButton({
                     end
                 end
                 wait(1)
+            end
+        end)
+    end
+})
+-- Auto Farm Bond toàn bản đồ (liên tục nhặt Bond)
+MainTab:AddToggle({
+    Name = "Auto Farm Bond Full Map",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoBond = Value
+        task.spawn(function()
+            while _G.AutoBond do
+                local player = game.Players.LocalPlayer
+                local char = player.Character or player.CharacterAdded:Wait()
+                local hrp = char:WaitForChild("HumanoidRootPart")
+                local found = 0
+
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Tool") and obj.Name:lower():find("bond") and obj:FindFirstChild("Handle") then
+                        found += 1
+                        hrp.CFrame = obj.Handle.CFrame + Vector3.new(0, 3, 0)
+                        task.wait(0.2)
+                        firetouchinterest(hrp, obj.Handle, 0)
+                        firetouchinterest(hrp, obj.Handle, 1)
+                    end
+                end
+
+                OrionLib:MakeNotification({
+                    Name = "Auto Bond",
+                    Content = "Đã thu thập xong " .. found .. " Bond!",
+                    Image = "rbxassetid://4483345998",
+                    Time = 3
+                })
+
+                task.wait(2)
             end
         end)
     end
