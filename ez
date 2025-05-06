@@ -1,380 +1,268 @@
--- Danh sách chủ sở hữu được phép chia sẻ script
-local allowedUserIds = {
-    5231420503, -- chính bạn
-    8348136049,
-    3019899298,
-    1845194807
+-- [🌟 Script Dead Rails All-In-One vFinal - By You]
+-- ✅ OrionLib GUI + Full tính năng + Chỉ bạn bè 4 ID được dùng
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local FriendsAllowed = {
+    [5231420503] = true,
+    [8348136049] = true,
+    [3019899298] = true,
+    [1845194807] = true,
 }
 
-local localPlayer = game.Players.LocalPlayer
-local allowed = false
-
-for _, ownerId in ipairs(allowedUserIds) do
-    if localPlayer.UserId == ownerId or localPlayer:IsFriendsWith(ownerId) then
-        allowed = true
-        break
+-- Kiểm tra bạn bè
+local function IsFriend()
+    local success, result = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet("https://friends.roblox.com/v1/users/" .. LocalPlayer.UserId .. "/friends"))
+    end)
+    if success then
+        for _, friend in ipairs(result.data) do
+            if FriendsAllowed[friend.id] then
+                return true
+            end
+        end
     end
+    return false
 end
 
-if not allowed then
-    localPlayer:Kick("Thông báo🔥:Script này chỉ dành cho chủ sở hữu hoặc bạn bè đã được chỉ định.")
+if not IsFriend() then
+    LocalPlayer:Kick("Bạn không có quyền sử dụng script này!")
     return
 end
 
-
-l-- Tải thư viện GUI
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
-
--- Tạo cửa sổ GUI
-local Window = OrionLib:MakeWindow({
-    Name = "Dead Rails-Hub | By: Minh",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "DeadRailsHubMinh"
-})
-
--- Tabs
-local MainTab = Window:MakeTab({Name = "Chức năng chính", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local MovementTab = Window:MakeTab({Name = "Di chuyển", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local VisualTab = Window:MakeTab({Name = "Hình ảnh", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-local ProtectionTab = Window:MakeTab({Name = "Bảo vệ", Icon = "rbxassetid://4483345998", PremiumOnly = false})
-
--- Danh sách tọa độ cuối map (cập nhật tùy bản đồ)
-local winPositions = {
-    Vector3.new(0, 50, 1000),
-    Vector3.new(0, 50, 1100),
-    Vector3.new(0, 50, 1200),
-}
-
--- Auto Win (di chuyển qua các tọa độ cuối map)
-MainTab:AddToggle({
-    Name = "Auto Win (Testing)",
-    Default = false,
-    Callback = function(Value)
-        _G.AutoWin = Value
-        task.spawn(function()
-            while _G.AutoWin do
-                for _, pos in ipairs(winPositions) do
-                    if not _G.AutoWin then break end
-                    game.Players.LocalPlayer.Character:MoveTo(pos)
-                    task.wait(1.5)
-                end
-                -- Thông báo khi hoàn tất 1 vòng
-                OrionLib:MakeNotification({
-                    Name = "Auto Win",
-                    Content = "Đã hoàn tất dịch chuyển đến cuối màn!",
-                    Image = "rbxassetid://4483345998",
-                    Time = 3
-                })
-                task.wait(1)
-            end
-        end)
+-- [🧠 Anti Kick Nhẹ]
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local args = {...}
+    if getnamecallmethod() == "Kick" and self == LocalPlayer then
+        return
     end
-})
+    return oldNamecall(self, unpack(args))
+end)
 
+-- [🧰 Tải OrionLib GUI]
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local Window = OrionLib:MakeWindow({Name = "Dead Rails Hub", HidePremium = false, SaveConfig = true, ConfigFolder = "DeadRailsState"})
 
+-- [🌟 Tabs]
+local MainTab = Window:MakeTab({Name = "Main", Icon = "rbxassetid://4483345998", PremiumOnly = false})
+local MiscTab = Window:MakeTab({Name = "Misc", Icon = "rbxassetid://4483345998", PremiumOnly = false})
 
--- Biến trạng thái
-local gunAuraEnabled = false
-local infiniteJumpEnabled = false
-local noclipEnabled = false
-
--- Gun Aura
+-- [⚡ Gun Aura]
+local auraActive = false
 MainTab:AddToggle({
     Name = "Gun Aura",
     Default = false,
-    Callback = function(Value)
-        gunAuraEnabled = Value
-        if Value then
-            task.spawn(function()
-                while gunAuraEnabled do
-                    for _, v in pairs(game:GetService("Players"):GetPlayers()) do
-                        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                            local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
-                            if tool and tool:FindFirstChild("Handle") then
-                                tool:Activate()
-                                tool.Handle.CFrame = v.Character.HumanoidRootPart.CFrame
-                            end
-                        end
+    Save = true,
+    Callback = function(v)
+        auraActive = v
+        while auraActive and task.wait(0.1) do
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and (plr.Team ~= LocalPlayer.Team) then
+                    local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                    if tool and tool:FindFirstChild("Shoot") then
+                        tool.Shoot:FireServer(plr.Character.HumanoidRootPart.Position)
                     end
-                    task.wait(0.3)
                 end
-            end)
-        end
-    end
-})
-
--- Auto Collect Bond & Ammo
-MainTab:AddButton({
-    Name = "Thu thập Bond & Đạn",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local char = player.Character or player.CharacterAdded:Wait()
-        local hrp = char:WaitForChild("HumanoidRootPart")
-
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") and (obj.Name:lower():find("bond") or obj.Name:lower():find("ammo")) and obj:FindFirstChild("Handle") then
-                firetouchinterest(hrp, obj.Handle, 0)
-                task.wait()
-                firetouchinterest(hrp, obj.Handle, 1)
             end
         end
     end
 })
 
--- Thu thập tất cả Bond
-MainTab:AddButton({
-    Name = "Thu thập tất cả Bond",
-    Callback = function()
-        local player = game.Players.LocalPlayer
-        local char = player.Character or player.CharacterAdded:Wait()
-        local hrp = char:WaitForChild("HumanoidRootPart")
-
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if obj:IsA("Tool") and obj.Name:lower():find("bond") and obj:FindFirstChild("Handle") then
-                firetouchinterest(hrp, obj.Handle, 0)
-                task.wait()
-                firetouchinterest(hrp, obj.Handle, 1)
-            end
-        end
-
-        OrionLib:MakeNotification({
-            Name = "Đã thu thập Bond",
-            Content = "Tất cả Bond trong map đã được thu thập!",
-            Image = "rbxassetid://4483345998",
-            Time = 4
-        })
-    end
-})
-
--- ESP
+-- [💰 Auto Farm Bond]
+local autoFarm = false
 MainTab:AddToggle({
-    Name = "ESP (Hiển thị người chơi)",
+    Name = "Auto Collect Bond",
     Default = false,
-    Callback = function(Value)
-        if Value then
-            task.spawn(function()
-                while Value do
-                    for _, v in pairs(game:GetService("Players"):GetPlayers()) do
-                        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and not v.Character.HumanoidRootPart:FindFirstChild("ESPBox") then
-                            local box = Instance.new("BoxHandleAdornment")
-                            box.Name = "ESPBox"
-                            box.Size = Vector3.new(4, 6, 4)
-                            box.Adornee = v.Character.HumanoidRootPart
-                            box.AlwaysOnTop = true
-                            box.ZIndex = 10
-                            box.Color3 = Color3.new(1, 0, 0)
-                            box.Transparency = 0.4
-                            box.Parent = v.Character.HumanoidRootPart
-                        end
-                    end
-                    task.wait(1)
-                end
-            end)
-        else
-            for _, v in pairs(game:GetService("Players"):GetPlayers()) do
-                if v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                    for _, adorn in pairs(v.Character.HumanoidRootPart:GetChildren()) do
-                        if adorn:IsA("BoxHandleAdornment") and adorn.Name == "ESPBox" then
-                            adorn:Destroy()
-                        end
-                    end
+    Save = true,
+    Callback = function(v)
+        autoFarm = v
+        while autoFarm and task.wait(1) do
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("TouchTransmitter") and v.Parent and v.Parent:FindFirstChild("TouchInterest") then
+                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, v.Parent, 0)
+                    firetouchinterest(LocalPlayer.Character.HumanoidRootPart, v.Parent, 1)
                 end
             end
         end
     end
 })
 
--- Mở khóa Camera
-MainTab:AddButton({
-    Name = "Mở khóa Camera",
-    Callback = function()
-        local p = game.Players.LocalPlayer
-        p.CameraMaxZoomDistance = 999
-        p.CameraMinZoomDistance = 0.5
+-- [👁 ESP]
+local espEnabled = false
+function EnableESP()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and not player.Character:FindFirstChild("NameESP") then
+            local bill = Instance.new("BillboardGui", player.Character)
+            bill.Name = "NameESP"
+            bill.Size = UDim2.new(0, 100, 0, 20)
+            bill.Adornee = player.Character:FindFirstChild("Head")
+            bill.AlwaysOnTop = true
+
+            local name = Instance.new("TextLabel", bill)
+            name.Size = UDim2.new(1, 0, 1, 0)
+            name.BackgroundTransparency = 1
+            name.TextColor3 = Color3.fromRGB(255, 0, 0)
+            name.TextStrokeTransparency = 0
+            name.Text = player.Name
+        end
     end
-})
+end
 
--- Tạo bản sao tấn công kẻ gây sát thương
-MainTab:AddButton({
-    Name = "Tạo bản sao tấn công",
-    Callback = function()
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
-        local Char = LocalPlayer.Character
-        if not Char then return end
-
-        local Clone = Char:Clone()
-        Clone.Name = LocalPlayer.Name .. "'s bản sao"
-        Clone.Parent = workspace
-
-        for _, v in pairs(Clone:GetDescendants()) do
-            if v:IsA("Script") or v:IsA("LocalScript") then
-                v:Destroy()
-            end
-        end
-
-        local Humanoid = Clone:FindFirstChildOfClass("Humanoid")
-        if Humanoid then
-            Humanoid.Health = 100
-            Humanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                Humanoid.Health = 100
-            end)
-        end
-
-        local attackers = {}
-        local originalHumanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-
-        if originalHumanoid then
-            originalHumanoid:GetPropertyChangedSignal("Health"):Connect(function()
-                local currentHealth = originalHumanoid.Health
-                if currentHealth < originalHumanoid.MaxHealth then
-                    for _, plr in pairs(Players:GetPlayers()) do
-                        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
-                            local dist = (plr.Character.HumanoidRootPart.Position - Char.HumanoidRootPart.Position).Magnitude
-                            if dist <= 30 and not table.find(attackers, plr) then
-                                table.insert(attackers, plr)
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-
-        task.spawn(function()
-            while Clone and Clone:FindFirstChild("HumanoidRootPart") do
-                for _, attacker in pairs(attackers) do
-                    if attacker.Character and attacker.Character:FindFirstChild("HumanoidRootPart") then
-                        Clone:MoveTo(attacker.Character.HumanoidRootPart.Position + Vector3.new(0, 0, 2))
-                        wait(0.1)
-                        local tool = Clone:FindFirstChildOfClass("Tool")
-                        if tool then
-                            tool:Activate()
-                        end
-                    end
-                end
-                wait(1)
-            end
+Players.PlayerAdded:Connect(function(player)
+    if espEnabled then
+        player.CharacterAdded:Connect(function()
+            task.wait(1)
+            EnableESP()
         end)
-    end
-})
--- Auto Farm Bond toàn bản đồ (liên tục nhặt Bond)
-MainTab:AddToggle({
-    Name = "Auto Farm Bond Full Map",
-    Default = false,
-    Callback = function(Value)
-        _G.AutoBond = Value
-        task.spawn(function()
-            while _G.AutoBond do
-                local player = game.Players.LocalPlayer
-                local char = player.Character or player.CharacterAdded:Wait()
-                local hrp = char:WaitForChild("HumanoidRootPart")
-                local found = 0
-
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("Tool") and obj.Name:lower():find("bond") and obj:FindFirstChild("Handle") then
-                        found += 1
-                        hrp.CFrame = obj.Handle.CFrame + Vector3.new(0, 3, 0)
-                        task.wait(0.2)
-                        firetouchinterest(hrp, obj.Handle, 0)
-                        firetouchinterest(hrp, obj.Handle, 1)
-                    end
-                end
-
-                OrionLib:MakeNotification({
-                    Name = "Auto Bond",
-                    Content = "Đã thu thập xong " .. found .. " Bond!",
-                    Image = "rbxassetid://4483345998",
-                    Time = 3
-                })
-
-                task.wait(2)
-            end
-        end)
-    end
-})
-
--- Full Bright
-VisualTab:AddButton({
-    Name = "Tăng độ sáng toàn cảnh",
-    Callback = function()
-        local l = game:GetService("Lighting")
-        l.Brightness = 2
-        l.ClockTime = 14
-        l.FogEnd = 100000
-        l.GlobalShadows = false
-    end
-})
-
--- Infinite Jump
-MovementTab:AddToggle({
-    Name = "Nhảy vô hạn",
-    Default = false,
-    Callback = function(Value)
-        infiniteJumpEnabled = Value
-    end
-})
-game:GetService("UserInputService").JumpRequest:Connect(function()
-    if infiniteJumpEnabled then
-        game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
     end
 end)
 
--- Walk Speed
-MovementTab:AddSlider({
-    Name = "Tốc độ di chuyển",
-    Min = 16,
-    Max = 100,
-    Default = 16,
-    Increment = 1,
-    ValueName = "Speed",
-    Callback = function(Value)
-        local hum = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = Value end
+MainTab:AddToggle({
+    Name = "ESP",
+    Default = false,
+    Save = true,
+    Callback = function(v)
+        espEnabled = v
+        if espEnabled then
+            EnableESP()
+        else
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Character and plr.Character:FindFirstChild("NameESP") then
+                    plr.Character.NameESP:Destroy()
+                end
+            end
+        end
     end
 })
 
--- NoClip
-MovementTab:AddToggle({
-    Name = "Đi xuyên tường (NoClip)",
-    Default = false,
-    Callback = function(Value)
-        noclipEnabled = Value
+-- [🎥 Unlock Camera]
+MainTab:AddButton({
+    Name = "Unlock Camera",
+    Callback = function()
+        LocalPlayer.CameraMaxZoomDistance = 999
+        LocalPlayer.CameraMinZoomDistance = 0
     end
 })
+
+-- [🌞 Full Bright]
+MainTab:AddButton({
+    Name = "Full Bright",
+    Callback = function()
+        game.Lighting.Brightness = 2
+        game.Lighting.ClockTime = 12
+        game.Lighting.FogEnd = 100000
+    end
+})
+
+-- [🪂 Infinite Jump]
+local infJump = false
+MainTab:AddToggle({
+    Name = "Infinite Jump",
+    Default = false,
+    Save = true,
+    Callback = function(v)
+        infJump = v
+    end
+})
+
+game:GetService("UserInputService").JumpRequest:Connect(function()
+    if infJump then
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
+-- [🏃 WalkSpeed]
+MainTab:AddSlider({
+    Name = "WalkSpeed",
+    Min = 16,
+    Max = 100,
+    Default = 16,
+    Save = true,
+    Callback = function(v)
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = v
+    end
+})
+
+-- [👻 NoClip]
+local noclip = false
+MainTab:AddToggle({
+    Name = "NoClip",
+    Default = false,
+    Save = true,
+    Callback = function(v)
+        noclip = v
+    end
+})
+
 game:GetService("RunService").Stepped:Connect(function()
-    if noclipEnabled then
-        for _, part in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
+    if noclip and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
                 part.CanCollide = false
             end
         end
     end
 end)
 
--- Bypass to End
+-- [🚀 Auto Win / Bypass to End]
 MainTab:AddButton({
-    Name = "Dịch chuyển đến cuối màn",
+    Name = "Auto Win",
     Callback = function()
-        local endPosition = Vector3.new(0, 50, 1000) -- ← cập nhật theo map thật
-        game.Players.LocalPlayer.Character:MoveTo(endPosition)
+        local c = LocalPlayer.Character
+        if c then
+            c:MoveTo(Vector3.new(9999, 100, 0)) -- ⚠️ Tùy map chỉnh tọa độ win
+        end
     end
 })
 
--- Anti-Kick
-ProtectionTab:AddButton({
-    Name = "Chống bị kick",
+-- [🧬 Clone Tự Tấn Công NPC đánh mình]
+MiscTab:AddButton({
+    Name = "Clone Auto Attack NPC",
     Callback = function()
-        local mt = getrawmetatable(game)
-        setreadonly(mt, false)
-        local old = mt.__namecall
-        mt.__namecall = newcclosure(function(self, ...)
-            local args = {...}
-            if getnamecallmethod() == "Kick" or tostring(self) == "Kick" then
-                return warn("Đã chặn lệnh kick.")
+        local clone = LocalPlayer.Character:Clone()
+        clone.Parent = workspace
+        clone.Name = "AttackClone"
+        clone.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+        clone.Humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+
+        -- Cầm tool của mình
+        local tool = LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            local cloneTool = tool:Clone()
+            cloneTool.Parent = clone
+            cloneTool:Activate()
+        end
+
+        local attackedNPCs = {}
+
+        -- Ghi nhớ NPC từng đánh
+        LocalPlayer.Character:FindFirstChildOfClass("Humanoid").HealthChanged:Connect(function(hp)
+            if hp < LocalPlayer.Character.Humanoid.MaxHealth then
+                for _, npc in pairs(workspace:GetDescendants()) do
+                    if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc:FindFirstChild("HumanoidRootPart") then
+                        if (npc.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude < 30 then
+                            attackedNPCs[npc] = true
+                        end
+                    end
+                end
             end
-            return old(self, unpack(args))
         end)
-        setreadonly(mt, true)
+
+        -- Di chuyển clone tấn công các NPC đã đánh mình
+        task.spawn(function()
+            while task.wait(1) do
+                for npc, _ in pairs(attackedNPCs) do
+                    if npc:FindFirstChild("HumanoidRootPart") and clone and clone:FindFirstChild("HumanoidRootPart") then
+                        clone:MoveTo(npc.HumanoidRootPart.Position)
+                    end
+                end
+            end
+        end)
     end
 })
+
+OrionLib:Init()
